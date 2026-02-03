@@ -20,3 +20,4 @@ class Panel:
             self.flag_printer()
 
 Panel().greet()
+Panel().admin()
