@@ -3,7 +3,9 @@ import atexit
 import textwrap
 import requests
 from flask import Flask, request
+import secrets
 
+access_token = secrets.token_hex(16)
 app = Flask(__name__)
 
 PUBLIC_COMMANDS = ["greet"]
@@ -16,6 +18,11 @@ ADMIN_PHP = f"""
 session_start();
 $raw = file_get_contents("php://input");
 $data = json_decode($raw, true);
+
+if (!isset($_REQUEST['token']) || $_REQUEST['token'] !== "{access_token}") {{
+    echo "<h2>Invalid token</h2>";
+    exit;
+}}
 
 if ($_REQUEST['cmd'] == 'greet') {{
     echo "<h1>Hello, World!</h1>";
@@ -40,6 +47,11 @@ LOGIN_PHP = f"""
 session_start();
 $CORRECT_HASH = "{HASH}";
 
+if (!isset($_REQUEST['token']) || $_REQUEST['token'] !== "{access_token}") {{
+    echo "<h2>Invalid token</h2>";
+    exit;
+}}
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {{
     $user = $_POST["username"] ?? "";
     $pass = $_POST["password"] ?? "";
@@ -50,7 +62,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {{
         echo "<h2>Logged in as admin</h2>";
         exit;
     }} else {{
-        echo "<h2>Invalid credentials</h2>";
+        echo "<h2>Invalid credentials</h2>";    
         exit;
     }}
 }}
@@ -161,12 +173,14 @@ def proxy(path):
     if request.method == "GET":
         resp = requests.get(
             request.url.replace(":5000", ":3000"),
-            allow_redirects=False
+            allow_redirects=False,
+            params={"token": access_token}
         )
     else:
         resp = requests.post(
             request.url.replace(":5000", ":3000"),
             json=json,
+            params={"token": access_token},
             allow_redirects=False
         )
 
